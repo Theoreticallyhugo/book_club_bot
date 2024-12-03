@@ -6,8 +6,6 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from poll import Poll
-
 ####################################################
 # bot environment setup
 ####################################################
@@ -30,6 +28,25 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 async def on_ready():
     print(f"We have logged in as {bot.user}")
 
+
+####################################################
+# bot welcome
+####################################################
+
+async def welcome(member):
+    # Code to execute when a new member joins
+    # member is the discord.Member object representing the new user
+    introductions = discord.utils.get(member.guild.text_channels, name='introductions')
+    await member.guild.system_channel.send(f"Welcome {member.mention}!\nplease introduce yourself in {introductions.mention}")
+
+@bot.event
+async def on_member_join(member):
+    await welcome(member)
+
+@bot.command(name="bitterblues_welcome_test")
+async def welcome_command(ctx, *args):
+    member = ctx.author
+    await welcome(member)
 
 ####################################################
 # bot polls
