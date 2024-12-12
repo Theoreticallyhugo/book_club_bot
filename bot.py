@@ -1,10 +1,13 @@
 # bot.py
+import logging
 import os
 from typing import Dict, List, Tuple
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
+from MyBot import MyBot
 
 ####################################################
 # bot environment setup
@@ -17,124 +20,74 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="/", intents=intents)
+bot = MyBot(command_prefix="/", intents=intents)
+logger = logging.getLogger("discord")
 
 ####################################################
 # bot internal setup
 ####################################################
 
 
+async def load_extensions(bot):
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py"):
+            await bot.load_extension(f"cogs.{filename[:-3]}")
+    logger.info("loaded PollsCog")
+    # This ensures the cog is loaded when the bot starts
+
+
 @bot.event
 async def on_ready():
-    print(f"We have logged in as {bot.user}")
+    logger.info(f"We have logged in as {bot.user}")
 
 
 ####################################################
 # bot welcome
 ####################################################
 
+
 async def welcome(member):
     # Code to execute when a new member joins
     # member is the discord.Member object representing the new user
-    introductions = discord.utils.get(member.guild.text_channels, name='introductions')
-    await member.guild.system_channel.send(f"Welcome {member.mention}!\nplease introduce yourself in {introductions.mention}")
+    introductions = discord.utils.get(
+        member.guild.text_channels, name="introductions"
+    )
+    await member.guild.system_channel.send(
+        f"Welcome {member.mention}!\nplease introduce yourself in {introductions.mention}"
+    )
+
 
 @bot.event
 async def on_member_join(member):
     await welcome(member)
 
-@bot.command(name="bitterblues_welcome_test")
+
+@bot.command(name="bitterblues_welcome_test", hidden=True)
 async def welcome_command(ctx, *args):
+    """
+    This is a description of the command that will show in help.
+
+    :param arg1: Description of the first argument
+    :param arg2: Description of the second argument
+    """
     member = ctx.author
     await welcome(member)
 
+
 ####################################################
-# bot polls
+# bot help
 ####################################################
 
 
-@bot.command()
-async def poll(ctx, title: str, *options: str):
-    # Validate options
-    if len(options) < 2 or len(options) > 10:
-        await ctx.send("Please provide between 2 and 10 poll options.")
-        return
-
-    # Create an embed for the poll
-    poll_embed = discord.Embed(
-        title=f"📊 Poll",
-        description=f"by {ctx.author.mention}\n\n**{title}**\n\n" + 
-        "\n".join([f"{chr(127344+i)} {option}" for i, option in enumerate(options)])
+async def custom_help(ctx, *args):
+    message_embed = discord.Embed(
+        title=f"Help",
+        description="**to learn more about specific commands, write `/command help`**\n"
+        + "## Polls:\n"
+        + "Use /poll to create a new poll, and /pollresults "
+        + "(in the same chat as the original poll) to get the respective results.\n",
     )
-    # Send the poll message
-    poll_message = await ctx.send(embed=poll_embed)
-
-    # Add reaction options
-    for i in range(len(options)):
-        await poll_message.add_reaction(chr(127344 + i))
-
-@bot.event
-async def on_reaction_add(reaction, user):
-    """
-    if only one vote per user is allowed, run this function.
-    """
-    # Ignore reactions from the bot itself
-    if user == bot.user:
-        return
-
-    # if the message has an embedding and its title is that of a poll
-    if reaction.message.embeds and reaction.message.embeds[0].title.startswith("📊 Poll"):
-        # Check if the user has already reacted
-        # Get all reactions on the message
-        for existing_reaction in reaction.message.reactions:
-            # Check if the user has already used this specific emoji
-            async for previous_user in existing_reaction.users():
-                if previous_user == user and existing_reaction.emoji != reaction.emoji:
-                    # Remove the previous reaction
-                    await reaction.message.remove_reaction(existing_reaction.emoji, user)
-
-
-@bot.command()
-async def pollresults(ctx, message_id):
-
-    # try to fetch the message to the poll
-    try:
-        message = await ctx.channel.fetch_message(message_id)
-    except:
-        await ctx.send("No poll found with that message ID.")
-        return
-
-
-    # if the message has an embedding and its title is that of a poll
-    if message.embeds and message.embeds[0].title.startswith("📊 Poll"):
-        # parse options here 
-        description = message.embeds[0].description.split("\n")
-        title = description[2]
-        options = description[4:]
-    else:
-        await ctx.send("No poll found with that message ID.")
-        return
-            
-
-    total_count = []
-    for i, option in enumerate(options):
-        for reaction in message.reactions:
-            if str(reaction.emoji) == chr(127344 + i):
-                total_count.append((option, reaction.count - 1))
-
-    # Create results embed
-    results_embed = discord.Embed(
-        title="📊 Poll Results",
-        description=f"**{title}**\n\n"
-        + "\n".join(
-            [
-                f"{option}: {count} votes"
-                for option, count in total_count
-            ]
-        ),
-    )
-
-    await ctx.send(embed=results_embed)
+    await ctx.send(embed=message_embed)
 
 
 # @bot.command(name="poll")
