@@ -1,7 +1,8 @@
+import json
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
-import json
 
 import discord
 from discord.ext import commands
@@ -20,6 +21,9 @@ class SuggestCog(commands.Cog):
 
     @commands.command()
     async def suggest(self, ctx, *, suggestion):
+        # adapt suggestion to discord channel syntax
+        suggestion = suggestion.replace(" ", "-")
+
         book_suggestions = discord.utils.get(
             ctx.message.guild.text_channels,
             name="book-suggestions",
@@ -47,8 +51,10 @@ class SuggestCog(commands.Cog):
             "author_id": ctx.author.id,
             "suggestion": suggestion,
             "poll_message": poll_message.id,
-            }
-        Path(f"./data/suggestion{datetime.now():%Y-%m-%d_%H:%M:%S}").write_text(json.dumps(suggestion_data))
+        }
+        Path(f"./data/suggestion_{suggestion}.json").write_text(
+            json.dumps(suggestion_data)
+        )
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -82,6 +88,30 @@ class SuggestCog(commands.Cog):
                     f"created new channel {new_channel.mention}"
                 )
                 await reaction.message.delete()
+
+                # file that stored the suggestion
+                suggestion_file = Path(
+                    f"./data/suggestion_{channel_name}.json"
+                )
+                suggestion_data = json.loads(suggestion_file.read_text())
+
+                # add guides
+                channel_guide_path = Path(f"./data/guides_{channel_name}.json")
+
+                # write data with new guide
+                channel_guide_path.write_text(
+                    json.dumps(
+                        [
+                            {
+                                "name": suggestion_data["author_name"],
+                                "id": suggestion_data["author_id"],
+                            }
+                        ]
+                    )
+                )
+
+                # remove suggestion file
+                suggestion_file.unlink()
 
 
 # This is the key part for loading

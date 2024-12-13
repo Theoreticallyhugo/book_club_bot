@@ -1,4 +1,6 @@
+import json
 import logging
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -13,6 +15,23 @@ class PinCog(commands.Cog):
 
     @commands.command()
     async def pin(self, ctx):
+        # get channel guides
+        current_channel = ctx.message.channel
+        channel_guide_path = Path(f"./data/guides_{current_channel}.json")
+
+        # check whether author is guide
+        is_guide = False
+        if channel_guide_path.is_file():
+            channel_guides = json.loads(channel_guide_path.read_text())
+            for guide in channel_guides:
+                if ctx.author.id == guide["id"]:
+                    is_guide = True
+                    break
+
+        if not is_guide:
+            await ctx.send("You are not a guide of this channel.")
+            return
+
         try:
             if ctx.message.reference:
                 replied_to_message = await ctx.channel.fetch_message(
@@ -31,6 +50,23 @@ class PinCog(commands.Cog):
 
     @commands.command()
     async def unpin(self, ctx):
+        # get channel guides
+        current_channel = ctx.message.channel
+        channel_guide_path = Path(f"./data/guides_{current_channel}.json")
+
+        # check whether author is guide
+        is_guide = False
+        if channel_guide_path.is_file():
+            channel_guides = json.loads(channel_guide_path.read_text())
+            for guide in channel_guides:
+                if ctx.author.id == guide["id"]:
+                    is_guide = True
+                    break
+
+        if not is_guide:
+            await ctx.send("You are not a guide of this channel.")
+            return
+
         try:
             if ctx.message.reference:
                 replied_to_message = await ctx.channel.fetch_message(
