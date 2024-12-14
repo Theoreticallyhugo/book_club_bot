@@ -1,6 +1,8 @@
 # bot.py
+import json
 import logging
 import os
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import discord
@@ -23,6 +25,8 @@ intents.message_content = True
 bot = MyBot(command_prefix="/", intents=intents)
 logger = logging.getLogger("discord")
 
+MONITORED_MESSAGES = []
+
 ####################################################
 # bot internal setup
 ####################################################
@@ -38,7 +42,25 @@ async def load_extensions(bot):
 
 @bot.event
 async def on_ready():
+    global MONITORED_MESSAGES
     logger.info(f"We have logged in as {bot.user}")
+
+    # load suggestions in book-suggestions
+    book_suggestions = [discord.utils.get(
+        guild.text_channels, name="book-suggestions"
+    ) for guild in bot.guilds]
+    logger.info(f"book_suggestions: {book_suggestions}")
+
+    for suggestion_file in Path("./data/").glob("suggestion*"):
+        suggestion_data = json.loads(suggestion_file.read_text())
+        for channel in book_suggestions:
+            try:
+                MONITORED_MESSAGES.append(await channel.fetch_message(
+                    suggestion_data["suggestion_message"]
+                ))
+                logger.info(f"Monitoring reactions for message: {MONITORED_MESSAGES[-1].embeds[0].description.split('\n')[-1]}")
+            except Exception as e:
+                logger.warning(f"Could not fetch message: {e}")
 
 
 ####################################################

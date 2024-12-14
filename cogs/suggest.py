@@ -42,38 +42,58 @@ class SuggestCog(commands.Cog):
         )
 
         # Send the poll message
-        poll_message = await ctx.send(embed=poll_embed)
+        suggestion_message = await ctx.send(embed=poll_embed)
 
         # Add reaction option
-        await poll_message.add_reaction(chr(128077))
+        await suggestion_message.add_reaction(chr(128077))
         suggestion_data = {
             "author_name": ctx.author.name,
             "author_id": ctx.author.id,
             "suggestion": suggestion,
-            "poll_message": poll_message.id,
+            "suggestion_message": suggestion_message.id,
         }
         Path(f"./data/suggestion_{suggestion}.json").write_text(
             json.dumps(suggestion_data)
         )
 
+    async def fetch_message(self, guild_id, channel_id, message_id):
+        # Get the guild (server)
+        guild = self.bot.get_guild(guild_id)
+        # if not guild:
+        #     await ctx.send("Could not find the guild.")
+        #     return
+
+        # Get the channel
+        channel = guild.get_channel(channel_id)
+        # if not channel:
+        #     await ctx.send("Could not find the channel.")
+        #     return
+
+        # Fetch the message
+        return await channel.fetch_message(message_id)
+
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_raw_reaction_add(self, payload):
+        user = payload.member
+        message = await self.fetch_message(
+            payload.guild_id, payload.channel_id, payload.message_id
+        )
         # Ignore reactions from the bot itself
         if user == self.bot.user:
             return
 
+        logger.info(f"{user} reacted to {message.id}")
+
         # if the message has an embedding and its title is that of a poll
-        if reaction.message.embeds and reaction.message.embeds[
-            0
-        ].title.startswith("New Book Suggestion"):
+        if message.embeds and message.embeds[0].title.startswith(
+            "New Book Suggestion"
+        ):
             # if len(reaction.message.reactions) > 2:
-            if len(reaction.message.reactions) > 0:
-                channel_name = reaction.message.embeds[0].description.split(
-                    "\n"
-                )[-1]
+            if len(message.reactions) > 0:
+                channel_name = message.embeds[0].description.split("\n")[-1]
 
                 # create new text channel
-                guild = reaction.message.guild
+                guild = message.guild
                 category = discord.utils.get(
                     guild.categories, name="Current Reads"
                 )
@@ -81,13 +101,13 @@ class SuggestCog(commands.Cog):
                     channel_name, category=category
                 )
                 new_channel = discord.utils.get(
-                    reaction.message.guild.text_channels,
+                    message.guild.text_channels,
                     name=channel_name.replace(" ", "-"),
                 )
-                await reaction.message.channel.send(
+                await message.channel.send(
                     f"created new channel {new_channel.mention}"
                 )
-                await reaction.message.delete()
+                await message.delete()
 
                 # file that stored the suggestion
                 suggestion_file = Path(
