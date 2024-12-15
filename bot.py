@@ -1,12 +1,13 @@
 # bot.py
+import asyncio
 import json
 import logging
 import os
+from datetime import date, datetime, time
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from MyBot import MyBot
@@ -62,6 +63,31 @@ async def on_ready():
             except Exception as e:
                 logger.warning(f"Could not fetch message: {e}")
 
+    logger.info(f"guilds the bot is a member of {bot.guilds}")
+    
+    # this doesnt block the bot and could be used to sleep till a specific time
+    # at that time, a 24 hour loop can be started, which checks whether its monday
+    # each monday, guides are asked to give new info
+    #
+    # @tasks.loop(hours=24)
+    # async def send_monday_message():
+    #    pass
+    #
+    # Start the task when the time is ready
+    # send_monday_message.start()
+    # 
+    # not sure about this one
+    # Handle task cancellation when the bot is stopped
+    # @send_monday_message.before_loop
+    # async def before_send_monday_message():
+    #     await bot.wait_until_ready()
+    diff = datetime.combine(date.today(), time(12, 31)) - datetime.now()
+    await asyncio.sleep(diff.seconds)
+    logger.info("starting monday message loop")
+
+    # Start the task when the time is ready
+    send_monday_message.start()
+
 
 ####################################################
 # bot welcome
@@ -94,6 +120,20 @@ async def welcome_command(ctx, *args):
     """
     member = ctx.author
     await welcome(member)
+
+@tasks.loop(hours=24)
+async def send_monday_message():
+    # if today is not monday
+    if date.today().weekday() != 0:
+        logger.info("today is not monday: skipping monday message")
+        return
+        
+    # bitterblues playground: 1312810973425565746
+    guild = bot.get_guild(1312810973425565746)
+    category = discord.utils.get(guild.categories, name="Current Reads")
+    for channel in category.text_channels:
+        await channel.send("this is a friendly reminder for this channels guides to update the reading goal :D")
+        logger.info(f"sending monday message to guild {guild} in channel {channel}")
 
 
 ####################################################

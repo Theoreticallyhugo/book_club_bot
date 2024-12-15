@@ -88,8 +88,8 @@ class SuggestCog(commands.Cog):
         if message.embeds and message.embeds[0].title.startswith(
             "New Book Suggestion"
         ):
-            # if len(reaction.message.reactions) > 2:
-            if len(message.reactions) > 0:
+            # if len(message.reactions) > 0:
+            if len(message.reactions) > 2:
                 channel_name = message.embeds[0].description.split("\n")[-1]
 
                 # create new text channel
