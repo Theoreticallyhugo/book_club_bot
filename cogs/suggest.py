@@ -22,7 +22,7 @@ class SuggestCog(commands.Cog):
     @commands.command()
     async def suggest(self, ctx, *, suggestion):
         # adapt suggestion to discord channel syntax
-        suggestion = suggestion.replace(" ", "-")
+        suggestion = suggestion.replace(" ", "-").replace(",","")
 
         book_suggestions = discord.utils.get(
             ctx.message.guild.text_channels,
@@ -88,8 +88,10 @@ class SuggestCog(commands.Cog):
         if message.embeds and message.embeds[0].title.startswith(
             "New Book Suggestion"
         ):
+            num_of_upvotes = [reaction.count for reaction in message.reactions if reaction.emoji == chr(128077)][0]
+            logger.info(f"its a poll and there are {num_of_upvotes} upvotes; {message.reactions}")
             # if len(message.reactions) > 0:
-            if len(message.reactions) > 2:
+            if num_of_upvotes > 2:
                 channel_name = message.embeds[0].description.split("\n")[-1]
 
                 # create new text channel
