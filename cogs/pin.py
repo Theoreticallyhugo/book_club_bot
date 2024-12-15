@@ -15,6 +15,12 @@ class PinCog(commands.Cog):
 
     @commands.command()
     async def pin(self, ctx):
+        """
+        pin the message that has been reacted to.
+
+        args:
+            ctx: context
+        """
         # get channel guides
         current_channel = ctx.message.channel
         channel_guide_path = Path(f"./data/guides_{current_channel}.json")
@@ -50,6 +56,12 @@ class PinCog(commands.Cog):
 
     @commands.command()
     async def unpin(self, ctx):
+        """
+        unpin the message that has been reacted to.
+
+        args:
+            ctx: context
+        """
         # get channel guides
         current_channel = ctx.message.channel
         channel_guide_path = Path(f"./data/guides_{current_channel}.json")

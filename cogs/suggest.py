@@ -1,7 +1,5 @@
 import json
 import logging
-import shutil
-from datetime import datetime
 from pathlib import Path
 
 import discord
@@ -21,8 +19,15 @@ class SuggestCog(commands.Cog):
 
     @commands.command()
     async def suggest(self, ctx, *, suggestion):
+        """
+        set up a poll for a new book.
+
+        args:
+            ctx: context
+            suggestion: entire text of the message, after the command
+        """
         # adapt suggestion to discord channel syntax
-        suggestion = suggestion.replace(" ", "-").replace(",","")
+        suggestion = suggestion.replace(" ", "-").replace(",", "")
 
         book_suggestions = discord.utils.get(
             ctx.message.guild.text_channels,
@@ -57,6 +62,14 @@ class SuggestCog(commands.Cog):
         )
 
     async def fetch_message(self, guild_id, channel_id, message_id):
+        """
+        get a message object, based on guild, channel and message id
+
+        args:
+            guild_id: int
+            channel_id: int
+            message_id: int
+        """
         # Get the guild (server)
         guild = self.bot.get_guild(guild_id)
         # if not guild:
@@ -74,6 +87,10 @@ class SuggestCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
+        """
+        whenever any reaction is added to any message, check whether its a suggestion.
+        """
+        # get the user and message
         user = payload.member
         message = await self.fetch_message(
             payload.guild_id, payload.channel_id, payload.message_id
@@ -88,8 +105,14 @@ class SuggestCog(commands.Cog):
         if message.embeds and message.embeds[0].title.startswith(
             "New Book Suggestion"
         ):
-            num_of_upvotes = [reaction.count for reaction in message.reactions if reaction.emoji == chr(128077)][0]
-            logger.info(f"its a poll and there are {num_of_upvotes} upvotes; {message.reactions}")
+            num_of_upvotes = [
+                reaction.count
+                for reaction in message.reactions
+                if reaction.emoji == chr(128077)
+            ][0]
+            logger.info(
+                f"its a poll and there are {num_of_upvotes} upvotes; {message.reactions}"
+            )
             # if len(message.reactions) > 0:
             if num_of_upvotes > 2:
                 channel_name = message.embeds[0].description.split("\n")[-1]

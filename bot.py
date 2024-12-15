@@ -26,62 +26,51 @@ intents.message_content = True
 bot = MyBot(command_prefix="/", intents=intents)
 logger = logging.getLogger("discord")
 
-MONITORED_MESSAGES = []
-
 ####################################################
 # bot internal setup
 ####################################################
 
 
-async def load_extensions(bot):
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py"):
-            await bot.load_extension(f"cogs.{filename[:-3]}")
-    logger.info("loaded PollsCog")
-    # This ensures the cog is loaded when the bot starts
-
-
 @bot.event
 async def on_ready():
-    global MONITORED_MESSAGES
+    """
+    initial setup when bot is ready.
+
+    1. load all book suggestions from files
+    2. find all suggestion messages stored in the files
+    3. wait until the time is right and the start the monday message loop
+    """
     logger.info(f"We have logged in as {bot.user}")
 
-    # load suggestions in book-suggestions
+    # get book-suggestions channels from all guilds
     book_suggestions = [discord.utils.get(
         guild.text_channels, name="book-suggestions"
     ) for guild in bot.guilds]
     logger.info(f"book_suggestions: {book_suggestions}")
 
+    # from all book-suggestions channels load all suggestion messages
+    # this could be used to check for completed suggestions
+    # for each suggestion file stored
     for suggestion_file in Path("./data/").glob("suggestion*"):
         suggestion_data = json.loads(suggestion_file.read_text())
+        # check whether suggestion can be loaded from any book-suggestions channel
         for channel in book_suggestions:
             try:
-                MONITORED_MESSAGES.append(await channel.fetch_message(
+                suggestion_message = await channel.fetch_message(
                     suggestion_data["suggestion_message"]
-                ))
-                logger.info(f"Monitoring reactions for message: {MONITORED_MESSAGES[-1].embeds[0].description.split('\n')[-1]}")
+                )
+                logger.info(f"Monitoring reactions for message: {suggestion_message.embeds[0].description.split('\n')[-1]}")
             except Exception as e:
                 logger.warning(f"Could not fetch message: {e}")
 
     logger.info(f"guilds the bot is a member of {bot.guilds}")
     
+    # wait until the time is right. then start the monday message loop
+    # 
     # this doesnt block the bot and could be used to sleep till a specific time
     # at that time, a 24 hour loop can be started, which checks whether its monday
     # each monday, guides are asked to give new info
-    #
-    # @tasks.loop(hours=24)
-    # async def send_monday_message():
-    #    pass
-    #
-    # Start the task when the time is ready
-    # send_monday_message.start()
-    # 
-    # not sure about this one
-    # Handle task cancellation when the bot is stopped
-    # @send_monday_message.before_loop
-    # async def before_send_monday_message():
-    #     await bot.wait_until_ready()
-    diff = datetime.combine(date.today(), time(12, 31)) - datetime.now()
+    diff = datetime.combine(date.today(), time(12, 00)) - datetime.now()
     await asyncio.sleep(diff.seconds)
     logger.info("starting monday message loop")
 
@@ -95,8 +84,11 @@ async def on_ready():
 
 
 async def welcome(member):
-    # Code to execute when a new member joins
-    # member is the discord.Member object representing the new user
+    """
+    Code to execute when a new member joins
+    args:
+        member: is the discord.Member object representing the new user
+    """
     introductions = discord.utils.get(
         member.guild.text_channels, name="introductions"
     )
@@ -107,66 +99,44 @@ async def welcome(member):
 
 @bot.event
 async def on_member_join(member):
+    """
+    this should be executed when a new member joins. for some reason it doesnt work...
+    args:
+        member: is the discord.Member object representing the new user
+    """
     await welcome(member)
+    logger.info("greeted new user")
 
 
 @bot.command(name="bitterblues_welcome_test", hidden=True)
 async def welcome_command(ctx, *args):
     """
-    This is a description of the command that will show in help.
-
-    :param arg1: Description of the first argument
-    :param arg2: Description of the second argument
+    this command test the welcome message
+    args:
+        ctx: context
+        args: we ignore this
     """
     member = ctx.author
     await welcome(member)
 
 @tasks.loop(hours=24)
 async def send_monday_message():
+    """
+    check whether its monday. if so, 
+    send the monday message to all chats in the current reads category
+    """
     # if today is not monday
     if date.today().weekday() != 0:
         logger.info("today is not monday: skipping monday message")
         return
         
     # bitterblues playground: 1312810973425565746
-    guild = bot.get_guild(1312810973425565746)
+    # book nook: 1294998125106167879
+    guild = bot.get_guild(1294998125106167879)
     category = discord.utils.get(guild.categories, name="Current Reads")
     for channel in category.text_channels:
         await channel.send("this is a friendly reminder for this channels guides to update the reading goal :D")
         logger.info(f"sending monday message to guild {guild} in channel {channel}")
-
-
-####################################################
-# bot help
-####################################################
-
-
-async def custom_help(ctx, *args):
-    message_embed = discord.Embed(
-        title=f"Help",
-        description="**to learn more about specific commands, write `/command help`**\n"
-        + "## Polls:\n"
-        + "Use /poll to create a new poll, and /pollresults "
-        + "(in the same chat as the original poll) to get the respective results.\n",
-    )
-    await ctx.send(embed=message_embed)
-
-
-# @bot.command(name="poll")
-# async def intro(ctx, *, args):
-#     await ctx.send(f"poll by {ctx.author.mention}\n\n{args}")
-
-# @bot.event
-# async def on_message(message):
-#     if message.author == client.user:
-#         return
-#
-#     if message.content.startswith('$hello'):
-#         await message.channel.send('Hello!')
-
-# @bot.command(name="poll")
-# async def poll(ctx, title ,*args):
-#     await ctx.send(f"{title}\npoll by {ctx.author.mention}\n{'\n'.join(f'{i+1}. {arg}' for i, arg in enumerate(args))}")
 
 
 bot.run(TOKEN)
