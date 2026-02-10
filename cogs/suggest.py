@@ -114,7 +114,7 @@ class SuggestCog(commands.Cog):
                 f"its a poll and there are {num_of_upvotes} upvotes; {message.reactions}"
             )
             # if len(message.reactions) > 0:
-            if num_of_upvotes > 2:
+            if num_of_upvotes > 3:
                 channel_name = message.embeds[0].description.split("\n")[-1]
 
                 # create new text channel
